@@ -87,24 +87,7 @@ export default function AddSchool() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center space-x-4">
-            <Link 
-              href="/"
-              className="inline-flex items-center text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Home
-            </Link>
-          </div>
-          <Link 
-            href="/showSchools"
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            View All Schools
-          </Link>
-        </div>
+       
 
         {/* Title */}
         <div className="text-center mb-8">

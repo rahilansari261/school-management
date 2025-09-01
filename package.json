@@ -12,7 +12,7 @@
     "db:studio": "prisma studio",
     "generate:schools": "node scripts/generate-fake-schools.js",
     "seed": "node scripts/generate-fake-schools.js",
-    "postinstall": "prisma generate && prisma migrate deploy && npm run seed"
+    "postinstall": "prisma generate && prisma migrate deploy"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",
