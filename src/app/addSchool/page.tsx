@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -19,7 +19,24 @@ const schoolSchema = z.object({
   state: z.string().min(2, 'State must be at least 2 characters').max(50, 'State must be less than 50 characters'),
   contact: z.string().regex(/^(\+91|91|0)?[6-9]\d{9}$/, 'Please enter a valid Indian phone number.'),
   email_id: z.string().email('Please enter a valid email address'),
-  image: z.instanceof(File).refine((file) => file.size > 0, 'Please select an image file'),
+  image: z.any().superRefine((file, ctx) => {
+    if (!file) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Please select an image file',
+      });
+    } else if (!(file instanceof File)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Please select an image file',
+      });
+    } else if (file.size === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Please select an image file',
+      });
+    }
+  }),
 });
 
 type SchoolFormData = z.infer<typeof schoolSchema>;
@@ -27,6 +44,7 @@ type SchoolFormData = z.infer<typeof schoolSchema>;
 export default function AddSchool() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const form = useForm<SchoolFormData>({
     resolver: zodResolver(schoolSchema),
@@ -37,10 +55,23 @@ export default function AddSchool() {
       state: '',
       contact: '',
       email_id: '',
+      image: undefined,
     },
   });
 
+  // Watch the image field for debugging
+  const watchedImage = form.watch('image');
+  console.log('Watched image:', watchedImage); // Debug log
+
+  // Trigger validation when image changes
+  useEffect(() => {
+    if (watchedImage) {
+      form.trigger('image');
+    }
+  }, [watchedImage, form]);
+
   const onSubmit = async (data: SchoolFormData) => {
+    console.log('Form data:', data); // Debug log
     setIsSubmitting(true);
     setMessage(null);
 
@@ -52,7 +83,9 @@ export default function AddSchool() {
       formData.append('state', data.state);
       formData.append('contact', data.contact);
       formData.append('email_id', data.email_id);
-      formData.append('image', data.image);
+      if (data.image) {
+        formData.append('image', data.image);
+      }
 
       const response = await fetch('/api/schools', {
         method: 'POST',
@@ -64,9 +97,10 @@ export default function AddSchool() {
       if (response.ok) {
         setMessage({ type: 'success', text: 'School added successfully!' });
         form.reset();
-        // Reset file input
+        // Reset file input and preview
         const fileInput = document.getElementById('image') as HTMLInputElement;
         if (fileInput) fileInput.value = '';
+        setImagePreview(null);
       } else {
         setMessage({ type: 'error', text: result.error || 'Failed to add school' });
       }
@@ -80,7 +114,16 @@ export default function AddSchool() {
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      form.setValue('image', file);
+      form.setValue('image', file, { shouldValidate: true });
+      // Create preview URL
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      form.setValue('image', undefined, { shouldValidate: true });
+      setImagePreview(null);
     }
   };
 
@@ -233,30 +276,59 @@ export default function AddSchool() {
                 <FormField
                   control={form.control}
                   name="image"
-                  render={() => (
+                  render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-gray-700 dark:text-gray-300">School Image *</FormLabel>
                       <FormControl>
-                        <div className="flex items-center justify-center w-full">
-                          <label 
-                            htmlFor="image" 
-                            className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:hover:bg-gray-800 dark:bg-gray-700 hover:bg-gray-100 dark:border-gray-500 dark:hover:border-gray-400"
-                          >
-                            <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                              <Upload className="w-8 h-8 mb-4 text-gray-500 dark:text-gray-400" />
-                              <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
-                                <span className="font-semibold">Click to upload</span> or drag and drop
-                              </p>
-                              <p className="text-xs text-gray-500 dark:text-gray-400">PNG, JPG, GIF up to 10MB</p>
+                        <div className="space-y-4">
+                          {/* Image Preview */}
+                          {imagePreview && (
+                            <div className="flex justify-center">
+                              <div className="relative">
+                                <img 
+                                  src={imagePreview} 
+                                  alt="School preview" 
+                                  className="max-h-48 rounded-lg border border-gray-300 dark:border-gray-600"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setImagePreview(null);
+                                    form.setValue('image', undefined, { shouldValidate: true });
+                                    const fileInput = document.getElementById('image') as HTMLInputElement;
+                                    if (fileInput) fileInput.value = '';
+                                  }}
+                                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600 transition-colors"
+                                >
+                                  ×
+                                </button>
+                              </div>
                             </div>
-                            <input 
-                              id="image" 
-                              type="file" 
-                              className="hidden" 
-                              accept="image/*"
-                              onChange={handleImageChange}
-                            />
-                          </label>
+                          )}
+                          
+                          {/* Upload Area */}
+                          <div className="flex items-center justify-center w-full">
+                            <label 
+                              htmlFor="image" 
+                              className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:hover:bg-gray-800 dark:bg-gray-700 hover:bg-gray-100 dark:border-gray-500 dark:hover:border-gray-400"
+                            >
+                              <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                <Upload className="w-8 h-8 mb-4 text-gray-500 dark:text-gray-400" />
+                                <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
+                                  <span className="font-semibold">Click to upload</span> or drag and drop
+                                </p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">PNG, JPG, GIF up to 10MB</p>
+                              </div>
+                              <input 
+                                id="image" 
+                                type="file" 
+                                className="hidden" 
+                                accept="image/*"
+                                onChange={handleImageChange}
+                                ref={field.ref}
+                              />
+                            </label>
+                          </div>
                         </div>
                       </FormControl>
                       <FormMessage />
