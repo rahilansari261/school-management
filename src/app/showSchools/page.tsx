@@ -91,6 +91,33 @@ export default function ShowSchools() {
     });
   };
 
+  // Smart pagination function
+  const generatePageNumbers = (currentPage: number, totalPages: number): (number | string)[] => {
+    const delta = 2; // Number of pages to show on each side of current page
+    const range = [];
+    const rangeWithDots = [];
+
+    for (let i = Math.max(2, currentPage - delta); i <= Math.min(totalPages - 1, currentPage + delta); i++) {
+      range.push(i);
+    }
+
+    if (currentPage - delta > 2) {
+      rangeWithDots.push(1, '...');
+    } else {
+      rangeWithDots.push(1);
+    }
+
+    rangeWithDots.push(...range);
+
+    if (currentPage + delta < totalPages - 1) {
+      rangeWithDots.push('...', totalPages);
+    } else {
+      rangeWithDots.push(totalPages);
+    }
+
+    return rangeWithDots;
+  };
+
   // Pagination calculations
   const totalPages = Math.ceil(filteredSchools.length / schoolsPerPage);
   const startIndex = (currentPage - 1) * schoolsPerPage;
@@ -107,6 +134,13 @@ export default function ShowSchools() {
 
   const goToNextPage = () => {
     setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  };
+
+  const goToSpecificPage = (pageInput: string) => {
+    const page = parseInt(pageInput);
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
   };
 
   if (loading) {
@@ -242,7 +276,26 @@ export default function ShowSchools() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="mt-8 flex items-center justify-center">
+          <div className="mt-8 flex flex-col items-center justify-center space-y-4">
+            {/* Page Info */}
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              Page {currentPage} of {totalPages} • Showing {startIndex + 1}-{Math.min(endIndex, filteredSchools.length)} of {filteredSchools.length} schools
+            </div>
+            
+            {/* Go to Page Input */}
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-600 dark:text-gray-400">Go to page:</span>
+              <Input
+                type="number"
+                min={1}
+                max={totalPages}
+                value={currentPage}
+                onChange={(e) => goToSpecificPage(e.target.value)}
+                className="w-20 h-8 text-center dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+              />
+            </div>
+            
+            {/* Pagination Controls */}
             <div className="flex items-center space-x-2">
               <Button
                 variant="outline"
@@ -255,18 +308,23 @@ export default function ShowSchools() {
                 Previous
               </Button>
               
-              {/* Page Numbers */}
+              {/* Page Numbers with Smart Pagination */}
               <div className="flex items-center space-x-1">
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                  <Button
-                    key={page}
-                    variant={currentPage === page ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => goToPage(page)}
-                    className="w-8 h-8 p-0 dark:border-gray-600 dark:text-white dark:hover:bg-gray-800"
-                  >
-                    {page}
-                  </Button>
+                {generatePageNumbers(currentPage, totalPages).map((page, index) => (
+                  <div key={index} className="flex items-center">
+                    {page === '...' ? (
+                      <span className="px-2 text-gray-500 dark:text-gray-400">...</span>
+                    ) : (
+                      <Button
+                        variant={currentPage === page ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => goToPage(page as number)}
+                        className="w-8 h-8 p-0 dark:border-gray-600 dark:text-white dark:hover:bg-gray-800"
+                      >
+                        {page}
+                      </Button>
+                    )}
+                  </div>
                 ))}
               </div>
               
