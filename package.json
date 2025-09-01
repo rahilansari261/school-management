@@ -10,6 +10,7 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
+    "generate:schools": "node scripts/generate-fake-schools.js",
     "seed": "node scripts/generate-fake-schools.js",
     "postinstall": "prisma generate && prisma migrate deploy && npm run seed"
   },

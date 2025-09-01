@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Search, MapPin, Phone, Mail, Calendar } from 'lucide-react';
+import { ArrowLeft, Search, MapPin, Phone, Mail, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface School {
   id: number;
@@ -24,9 +24,11 @@ export default function ShowSchools() {
   const [schools, setSchools] = useState<School[]>([]);
   const [filteredSchools, setFilteredSchools] = useState<School[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCity, setSelectedCity] = useState('');
-  const [selectedState, setSelectedState] = useState('');
   const [loading, setLoading] = useState(true);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const schoolsPerPage = 10;
 
   const filterSchools = useCallback(() => {
     let filtered = schools;
@@ -41,30 +43,18 @@ export default function ShowSchools() {
       );
     }
 
-    // City filter
-    if (selectedCity) {
-      filtered = filtered.filter(school =>
-        school.city.toLowerCase() === selectedCity.toLowerCase()
-      );
-    }
-
-    // State filter
-    if (selectedState) {
-      filtered = filtered.filter(school =>
-        school.state.toLowerCase() === selectedState.toLowerCase()
-      );
-    }
-
     setFilteredSchools(filtered);
-  }, [schools, searchTerm, selectedCity, selectedState]);
+    setCurrentPage(1); // Reset to first page when filtering
+  }, [schools, searchTerm]);
 
   useEffect(() => {
     fetchSchools();
   }, []);
 
-  useEffect(() => {
-    filterSchools();
-  }, [filterSchools]);
+  // Remove the automatic filtering on searchTerm change
+  // useEffect(() => {
+  //   filterSchools();
+  // }, [filterSchools]);
 
   const fetchSchools = async () => {
     try {
@@ -72,6 +62,7 @@ export default function ShowSchools() {
       if (response.ok) {
         const data = await response.json();
         setSchools(data);
+        setFilteredSchools(data); // Initially show all schools
       } else {
         console.error('Failed to fetch schools');
       }
@@ -82,12 +73,14 @@ export default function ShowSchools() {
     }
   };
 
-  const getUniqueCities = () => {
-    return [...new Set(schools.map(school => school.city))].sort();
+  const handleSearch = () => {
+    filterSchools();
   };
 
-  const getUniqueStates = () => {
-    return [...new Set(schools.map(school => school.state))].sort();
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -96,6 +89,24 @@ export default function ShowSchools() {
       month: 'long',
       day: 'numeric'
     });
+  };
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredSchools.length / schoolsPerPage);
+  const startIndex = (currentPage - 1) * schoolsPerPage;
+  const endIndex = startIndex + schoolsPerPage;
+  const currentSchools = filteredSchools.slice(startIndex, endIndex);
+
+  const goToPage = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const goToPreviousPage = () => {
+    setCurrentPage(prev => Math.max(prev - 1, 1));
+  };
+
+  const goToNextPage = () => {
+    setCurrentPage(prev => Math.min(prev + 1, totalPages));
   };
 
   if (loading) {
@@ -141,62 +152,32 @@ export default function ShowSchools() {
           </p>
         </div>
 
-        {/* Filters */}
+        {/* Search */}
         <Card className="mb-8">
           <CardHeader>
-            <CardTitle className="text-gray-900 dark:text-white">Search & Filters</CardTitle>
+            <CardTitle className="text-gray-900 dark:text-white">Search Schools</CardTitle>
             <CardDescription className="text-gray-600 dark:text-gray-400">
-              Find schools by name, location, or other criteria
+              Find schools by name, address, city, or state
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {/* Search */}
-              <div className="relative">
+            <div className="flex gap-4">
+              <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <Input
                   placeholder="Search schools..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyPress={handleKeyPress}
                   className="pl-10 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
                 />
               </div>
-
-              {/* City Filter */}
-              <select
-                value={selectedCity}
-                onChange={(e) => setSelectedCity(e.target.value)}
-                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
-              >
-                <option value="">All Cities</option>
-                {getUniqueCities().map(city => (
-                  <option key={city} value={city}>{city}</option>
-                ))}
-              </select>
-
-              {/* State Filter */}
-              <select
-                value={selectedState}
-                onChange={(e) => setSelectedState(e.target.value)}
-                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
-              >
-                <option value="">All States</option>
-                {getUniqueStates().map(state => (
-                  <option key={state} value={state}>{state}</option>
-                ))}
-              </select>
-
-              {/* Clear Filters */}
               <Button
-                variant="outline"
-                onClick={() => {
-                  setSearchTerm('');
-                  setSelectedCity('');
-                  setSelectedState('');
-                }}
-                className="dark:border-gray-600 dark:text-white dark:hover:bg-gray-800"
+                onClick={handleSearch}
+                className="px-6"
               >
-                Clear Filters
+                <Search className="w-4 h-4 mr-2" />
+                Search
               </Button>
             </div>
           </CardContent>
@@ -205,24 +186,24 @@ export default function ShowSchools() {
         {/* Results Count */}
         <div className="mb-6">
           <p className="text-gray-600 dark:text-gray-300">
-            Showing {filteredSchools.length} of {schools.length} schools
+            Showing {currentSchools.length} of {filteredSchools.length} schools (Page {currentPage} of {totalPages})
           </p>
         </div>
 
         {/* Schools Grid */}
-        {filteredSchools.length === 0 ? (
+        {currentSchools.length === 0 ? (
           <Card className="text-center py-12">
             <CardContent>
               <div className="text-gray-500 dark:text-gray-400">
                 <Search className="w-16 h-16 mx-auto mb-4 opacity-50" />
                 <h3 className="text-lg font-medium mb-2">No schools found</h3>
-                <p>Try adjusting your search criteria or filters.</p>
+                <p>Try adjusting your search criteria.</p>
               </div>
             </CardContent>
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredSchools.map((school) => (
+            {currentSchools.map((school) => (
               <Card key={school.id} className="overflow-hidden hover:shadow-lg transition-shadow dark:bg-gray-800 dark:border-gray-700">
                 <div className="relative h-48 bg-gray-200 dark:bg-gray-700">
                   {school.image ? (
@@ -273,6 +254,50 @@ export default function ShowSchools() {
                 </CardContent>
               </Card>
             ))}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="mt-8 flex items-center justify-center">
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={goToPreviousPage}
+                disabled={currentPage === 1}
+                className="dark:border-gray-600 dark:text-white dark:hover:bg-gray-800"
+              >
+                <ChevronLeft className="w-4 h-4 mr-1" />
+                Previous
+              </Button>
+              
+              {/* Page Numbers */}
+              <div className="flex items-center space-x-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <Button
+                    key={page}
+                    variant={currentPage === page ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => goToPage(page)}
+                    className="w-8 h-8 p-0 dark:border-gray-600 dark:text-white dark:hover:bg-gray-800"
+                  >
+                    {page}
+                  </Button>
+                ))}
+              </div>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={goToNextPage}
+                disabled={currentPage === totalPages}
+                className="dark:border-gray-600 dark:text-white dark:hover:bg-gray-800"
+              >
+                Next
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            </div>
           </div>
         )}
       </div>
