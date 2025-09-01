@@ -17,7 +17,7 @@ const schoolSchema = z.object({
   address: z.string().min(10, 'Address must be at least 10 characters').max(500, 'Address must be less than 500 characters'),
   city: z.string().min(2, 'City must be at least 2 characters').max(50, 'City must be less than 50 characters'),
   state: z.string().min(2, 'State must be at least 2 characters').max(50, 'State must be less than 50 characters'),
-  contact: z.string().regex(/^[\+]?[1-9][\d]{0,15}$/, 'Please enter a valid phone number'),
+  contact: z.string().regex(/^(\+91|91|0)?[6-9]\d{9}$/, 'Please enter a valid Indian phone number.'),
   email_id: z.string().email('Please enter a valid email address'),
   image: z.instanceof(File).refine((file) => file.size > 0, 'Please select an image file'),
 });
