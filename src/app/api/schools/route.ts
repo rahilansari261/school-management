@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createConnection } from '@/lib/db';
+import { prisma } from '@/lib/prisma';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     let imagePath = '';
     
     // Handle image upload
-    if (imageFile && imageFile.size > 0) {
+    if (imageFile) {
       const bytes = await imageFile.arrayBuffer();
       const buffer = Buffer.from(bytes);
       
@@ -62,19 +62,23 @@ export async function POST(request: NextRequest) {
       imagePath = `/schoolImages/${fileName}`;
     }
 
-    // Save to database
-    const connection = await createConnection();
-    const [result] = await connection.execute(
-      'INSERT INTO schools (name, address, city, state, contact, image, email_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [name, address, city, state, contact, imagePath, email_id]
-    );
-    
-    await connection.end();
+    // Save to database using Prisma
+    const school = await prisma.school.create({
+      data: {
+        name,
+        address,
+        city,
+        state,
+        contact,
+        image: imagePath,
+        email_id,
+      },
+    });
 
     return NextResponse.json(
       { 
         message: 'School added successfully',
-        schoolId: (result as { insertId: number }).insertId 
+        schoolId: school.id 
       },
       { status: 201 }
     );
@@ -90,11 +94,13 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   try {
-    const connection = await createConnection();
-    const [rows] = await connection.execute('SELECT * FROM schools ORDER BY created_at DESC');
-    await connection.end();
+    const schools = await prisma.school.findMany({
+      orderBy: {
+        created_at: 'desc',
+      },
+    });
 
-    return NextResponse.json(rows);
+    return NextResponse.json(schools);
   } catch (error) {
     console.error('Error fetching schools:', error);
     return NextResponse.json(

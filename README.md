@@ -1,6 +1,6 @@
 # School Management System
 
-A comprehensive Next.js application for managing school information with MySQL database integration.
+A comprehensive Next.js application for managing school information with Prisma ORM integration.
 
 ## Features
 
@@ -10,20 +10,20 @@ A comprehensive Next.js application for managing school information with MySQL d
 - **Form Validation**: Built-in validation using react-hook-form and Zod
 - **Responsive Design**: Works seamlessly on both desktop and mobile devices
 - **Search & Filter**: Advanced search and filtering capabilities
-- **MySQL Integration**: Robust database backend with automatic table creation
+- **Prisma Integration**: Modern database ORM with automatic schema management
 
 ## Tech Stack
 
-- **Frontend**: Next.js 14, React, TypeScript, Tailwind CSS
+- **Frontend**: Next.js 15, React, TypeScript, Tailwind CSS
 - **Form Handling**: react-hook-form with Zod validation
-- **Database**: MySQL with mysql2 driver
+- **Database**: Prisma ORM with PostgreSQL support
 - **Styling**: Tailwind CSS for responsive design
 - **Image Handling**: Next.js Image component with file upload
 
 ## Prerequisites
 
 - Node.js 18+ 
-- MySQL database server
+- PostgreSQL database server (or other supported databases)
 - npm or yarn package manager
 
 ## Installation
@@ -43,18 +43,17 @@ A comprehensive Next.js application for managing school information with MySQL d
    Create a `.env.local` file in the root directory:
    ```env
    # Database Configuration
-   DB_HOST=localhost
-   DB_USER=root
-   DB_PASSWORD=your_password
-   DB_NAME=school_management
-   DB_PORT=3306
+   DATABASE_URL="postgresql://username:password@localhost:5432/school_management"
    ```
 
-4. **Set up MySQL database**
-   ```sql
-   CREATE DATABASE school_management;
+4. **Set up database**
+   ```bash
+   # Generate Prisma client
+   npm run db:generate
+   
+   # Push schema to database
+   npm run db:push
    ```
-   The application will automatically create the required tables on first run.
 
 5. **Run the development server**
    ```bash
@@ -66,21 +65,32 @@ A comprehensive Next.js application for managing school information with MySQL d
 
 ## Database Schema
 
-The application automatically creates a `schools` table with the following structure:
+The application uses Prisma ORM with the following schema:
 
-```sql
-CREATE TABLE schools (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  name TEXT NOT NULL,
-  address TEXT NOT NULL,
-  city TEXT NOT NULL,
-  state TEXT NOT NULL,
-  contact VARCHAR(15) NOT NULL,
-  image TEXT,
-  email_id VARCHAR(255) NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+```prisma
+model School {
+  id         Int      @id @default(autoincrement())
+  name       String
+  address    String
+  city       String
+  state      String
+  contact    String
+  image      String?
+  email_id   String
+  created_at DateTime @default(now())
+
+  @@map("schools")
+}
 ```
+
+## Available Scripts
+
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run db:generate` - Generate Prisma client
+- `npm run db:push` - Push schema changes to database
+- `npm run db:studio` - Open Prisma Studio for database management
 
 ## Pages
 
@@ -135,6 +145,21 @@ The application uses Zod schema validation for:
 - Touch-friendly interface
 - Optimized for all device types
 
+## Database Management
+
+### Prisma Studio
+Access your database through a visual interface:
+```bash
+npm run db:studio
+```
+
+### Schema Changes
+After modifying the Prisma schema:
+```bash
+npm run db:generate  # Generate new client
+npm run db:push      # Push changes to database
+```
+
 ## Deployment
 
 ### Vercel (Recommended)
@@ -151,11 +176,7 @@ The application uses Zod schema validation for:
 ## Environment Variables for Production
 
 ```env
-DB_HOST=your-production-db-host
-DB_USER=your-production-db-user
-DB_PASSWORD=your-production-db-password
-DB_NAME=your-production-db-name
-DB_PORT=3306
+DATABASE_URL="postgresql://username:password@host:port/database"
 ```
 
 ## Contributing
