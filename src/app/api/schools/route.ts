@@ -92,19 +92,73 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const search = searchParams.get('search') || '';
+
+    // Validate pagination parameters
+    if (page < 1 || limit < 1 || limit > 100) {
+      return NextResponse.json(
+        { error: 'Invalid pagination parameters' },
+        { status: 400 }
+      );
+    }
+
+    // Calculate skip value for pagination
+    const skip = (page - 1) * limit;
+
+    // Build where clause for search - handle empty search properly
+    let whereClause = {};
+    if (search && search.trim() !== '') {
+      const searchTerm = search.trim();
+      whereClause = {
+        OR: [
+          { name: { contains: searchTerm } },
+          { address: { contains: searchTerm } },
+          { city: { contains: searchTerm } },
+          { state: { contains: searchTerm } },
+        ],
+      };
+    }
+
+    // Get total count for pagination
+    const totalCount = await prisma.school.count({
+      where: whereClause,
+    });
+
+    // Get schools with pagination and search
     const schools = await prisma.school.findMany({
+      where: whereClause,
       orderBy: {
         created_at: 'desc',
       },
+      skip,
+      take: limit,
     });
 
-    return NextResponse.json(schools);
+    // Calculate pagination metadata
+    const totalPages = Math.ceil(totalCount / limit);
+    const hasNextPage = page < totalPages;
+    const hasPreviousPage = page > 1;
+
+    return NextResponse.json({
+      schools,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalCount,
+        hasNextPage,
+        hasPreviousPage,
+        limit,
+      },
+    });
   } catch (error) {
     console.error('Error fetching schools:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

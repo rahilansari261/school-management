@@ -22,47 +22,45 @@ interface School {
 
 export default function ShowSchools() {
   const [schools, setSchools] = useState<School[]>([]);
-  const [filteredSchools, setFilteredSchools] = useState<School[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  const [searching, setSearching] = useState(false); // Separate loading state for search
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const schoolsPerPage = 10;
 
-  const filterSchools = useCallback(() => {
-    let filtered = schools;
+  // Remove debounced search term - no more auto-search
 
-    // Search filter
-    if (searchTerm) {
-      filtered = filtered.filter(school =>
-        school.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        school.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        school.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        school.state.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    setFilteredSchools(filtered);
-    setCurrentPage(1); // Reset to first page when filtering
-  }, [schools, searchTerm]);
+  // Remove filteredSchools state and filterSchools function as they're no longer needed
 
   useEffect(() => {
+    // Only fetch on initial load or page change, not on search term change
     fetchSchools();
-  }, []);
-
-  // Remove the automatic filtering on searchTerm change
-  // useEffect(() => {
-  //   filterSchools();
-  // }, [filterSchools]);
+  }, [currentPage]); // Remove searchTerm dependency
 
   const fetchSchools = async () => {
     try {
-      const response = await fetch('/api/schools');
+      if (searchTerm) {
+        setSearching(true); // Show search loading state
+      } else {
+        setLoading(true); // Show general loading state
+      }
+      
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: schoolsPerPage.toString(),
+        ...(searchTerm && { search: searchTerm }),
+      });
+      
+      const response = await fetch(`/api/schools?${params}`);
       if (response.ok) {
         const data = await response.json();
-        setSchools(data);
-        setFilteredSchools(data); // Initially show all schools
+        setSchools(data.schools);
+        setTotalPages(data.pagination.totalPages);
+        setTotalCount(data.pagination.totalCount);
       } else {
         console.error('Failed to fetch schools');
       }
@@ -70,18 +68,22 @@ export default function ShowSchools() {
       console.error('Error fetching schools:', error);
     } finally {
       setLoading(false);
+      setSearching(false);
     }
   };
 
   const handleSearch = () => {
-    filterSchools();
+    setCurrentPage(1); // Reset to first page when searching
+    fetchSchools(); // Manually trigger search
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSearch();
-    }
+  const handleClearSearch = () => {
+    setSearchTerm(''); // Clear search term
+    setCurrentPage(1); // Reset to first page
+    fetchSchools(); // Fetch all schools
   };
+
+  // Remove handleKeyPress since we only want search on button click
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -118,11 +120,9 @@ export default function ShowSchools() {
     return rangeWithDots;
   };
 
-  // Pagination calculations
-  const totalPages = Math.ceil(filteredSchools.length / schoolsPerPage);
+  // Pagination calculations - now using server-side data
   const startIndex = (currentPage - 1) * schoolsPerPage;
-  const endIndex = startIndex + schoolsPerPage;
-  const currentSchools = filteredSchools.slice(startIndex, endIndex);
+  const endIndex = startIndex + schools.length;
 
   const goToPage = (page: number) => {
     setCurrentPage(page);
@@ -143,7 +143,7 @@ export default function ShowSchools() {
     }
   };
 
-  if (loading) {
+  if (loading || searching) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
@@ -174,7 +174,7 @@ export default function ShowSchools() {
           <CardHeader>
             <CardTitle className="text-gray-900 dark:text-white">Search Schools</CardTitle>
             <CardDescription className="text-gray-600 dark:text-gray-400">
-              Find schools by name.
+              Find schools by name, address, city, or state.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -185,17 +185,32 @@ export default function ShowSchools() {
                   placeholder="Search schools..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  onKeyPress={handleKeyPress}
                   className="pl-10 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
                 />
+                {searching && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  </div>
+                )}
               </div>
               <Button
                 onClick={handleSearch}
                 className="px-6"
+                disabled={searching}
               >
                 <Search className="w-4 h-4 mr-2" />
-                Search
+                {searching ? 'Searching...' : 'Search'}
               </Button>
+              {searchTerm && (
+                <Button
+                  variant="outline"
+                  onClick={handleClearSearch}
+                  disabled={searching}
+                  className="px-4"
+                >
+                  Clear
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -203,12 +218,19 @@ export default function ShowSchools() {
         {/* Results Count */}
         <div className="mb-6">
           <p className="text-gray-600 dark:text-gray-300">
-            Showing {currentSchools.length} of {filteredSchools.length} schools (Page {currentPage} of {totalPages})
+            {loading || searching ? (
+              <span className="flex items-center">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                Loading...
+              </span>
+            ) : (
+              `Showing ${schools.length} of ${totalCount} schools (Page ${currentPage} of ${totalPages})`
+            )}
           </p>
         </div>
 
         {/* Schools Grid */}
-        {currentSchools.length === 0 ? (
+        {schools.length === 0 ? (
           <Card className="text-center py-12">
             <CardContent>
               <div className="text-gray-500 dark:text-gray-400">
@@ -220,7 +242,7 @@ export default function ShowSchools() {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {currentSchools.map((school) => (
+            {schools.map((school) => (
               <Card key={school.id} className="overflow-hidden hover:shadow-lg transition-shadow dark:bg-gray-800 dark:border-gray-700">
                 <div className="relative h-48 bg-gray-200 dark:bg-gray-700">
                   {school.image ? (
@@ -279,7 +301,7 @@ export default function ShowSchools() {
           <div className="mt-8 flex flex-col items-center justify-center space-y-4 px-4 sm:px-0">
             {/* Page Info */}
             <div className="text-sm text-gray-600 dark:text-gray-400 text-center">
-              Page {currentPage} of {totalPages} • Showing {startIndex + 1}-{Math.min(endIndex, filteredSchools.length)} of {filteredSchools.length} schools
+              Page {currentPage} of {totalPages} • Showing {startIndex + 1}-{endIndex} of {totalCount} schools
             </div>
             
             {/* Go to Page Input */}
