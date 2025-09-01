@@ -276,9 +276,9 @@ export default function ShowSchools() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="mt-8 flex flex-col items-center justify-center space-y-4">
+          <div className="mt-8 flex flex-col items-center justify-center space-y-4 px-4 sm:px-0">
             {/* Page Info */}
-            <div className="text-sm text-gray-600 dark:text-gray-400">
+            <div className="text-sm text-gray-600 dark:text-gray-400 text-center">
               Page {currentPage} of {totalPages} • Showing {startIndex + 1}-{Math.min(endIndex, filteredSchools.length)} of {filteredSchools.length} schools
             </div>
             
@@ -296,30 +296,30 @@ export default function ShowSchools() {
             </div>
             
             {/* Pagination Controls */}
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center justify-center w-full max-w-sm mx-auto px-2">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={goToPreviousPage}
                 disabled={currentPage === 1}
-                className="dark:border-gray-600 dark:text-white dark:hover:bg-gray-800"
+                className="dark:border-gray-600 dark:text-white dark:hover:bg-gray-800 flex-shrink-0"
               >
                 <ChevronLeft className="w-4 h-4 mr-1" />
-                Previous
+                <span className="hidden sm:inline">Previous</span>
               </Button>
               
               {/* Page Numbers with Smart Pagination */}
-              <div className="flex items-center space-x-1">
+              <div className="flex items-center space-x-1 mx-2 flex-1 justify-center">
                 {generatePageNumbers(currentPage, totalPages).map((page, index) => (
                   <div key={index} className="flex items-center">
                     {page === '...' ? (
-                      <span className="px-2 text-gray-500 dark:text-gray-400">...</span>
+                      <span className="px-1 sm:px-2 text-gray-500 dark:text-gray-400">...</span>
                     ) : (
                       <Button
                         variant={currentPage === page ? "default" : "outline"}
                         size="sm"
                         onClick={() => goToPage(page as number)}
-                        className="w-8 h-8 p-0 dark:border-gray-600 dark:text-white dark:hover:bg-gray-800"
+                        className="w-7 h-7 sm:w-8 sm:h-8 p-0 text-xs sm:text-sm dark:border-gray-600 dark:text-white dark:hover:bg-gray-800 flex-shrink-0"
                       >
                         {page}
                       </Button>
@@ -333,9 +333,9 @@ export default function ShowSchools() {
                 size="sm"
                 onClick={goToNextPage}
                 disabled={currentPage === totalPages}
-                className="dark:border-gray-600 dark:text-white dark:hover:bg-gray-800"
+                className="dark:border-gray-600 dark:text-white dark:hover:bg-gray-800 flex-shrink-0"
               >
-                Next
+                <span className="hidden sm:inline">Next</span>
                 <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
             </div>
