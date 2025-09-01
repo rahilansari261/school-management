@@ -1,8 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft, Search, MapPin, Phone, Mail, Calendar } from 'lucide-react';
 
 interface School {
   id: number;
@@ -18,232 +22,256 @@ interface School {
 
 export default function ShowSchools() {
   const [schools, setSchools] = useState<School[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [filteredSchools, setFilteredSchools] = useState<School[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterCity, setFilterCity] = useState('');
-  const [filterState, setFilterState] = useState('');
+  const [selectedCity, setSelectedCity] = useState('');
+  const [selectedState, setSelectedState] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  const filterSchools = useCallback(() => {
+    let filtered = schools;
+
+    // Search filter
+    if (searchTerm) {
+      filtered = filtered.filter(school =>
+        school.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        school.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        school.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        school.state.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // City filter
+    if (selectedCity) {
+      filtered = filtered.filter(school =>
+        school.city.toLowerCase() === selectedCity.toLowerCase()
+      );
+    }
+
+    // State filter
+    if (selectedState) {
+      filtered = filtered.filter(school =>
+        school.state.toLowerCase() === selectedState.toLowerCase()
+      );
+    }
+
+    setFilteredSchools(filtered);
+  }, [schools, searchTerm, selectedCity, selectedState]);
 
   useEffect(() => {
     fetchSchools();
   }, []);
 
+  useEffect(() => {
+    filterSchools();
+  }, [filterSchools]);
+
   const fetchSchools = async () => {
     try {
-      setLoading(true);
       const response = await fetch('/api/schools');
       if (response.ok) {
         const data = await response.json();
         setSchools(data);
       } else {
-        setError('Failed to fetch schools');
+        console.error('Failed to fetch schools');
       }
-    } catch {
-      setError('An error occurred while fetching schools');
+    } catch (error) {
+      console.error('Error fetching schools:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Get unique cities and states for filters
-  const cities = [...new Set(schools.map(school => school.city))].sort();
-  const states = [...new Set(schools.map(school => school.state))].sort();
+  const getUniqueCities = () => {
+    return [...new Set(schools.map(school => school.city))].sort();
+  };
 
-  // Filter schools based on search and filters
-  const filteredSchools = schools.filter(school => {
-    const matchesSearch = school.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         school.address.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCity = !filterCity || school.city === filterCity;
-    const matchesState = !filterState || school.state === filterState;
-    
-    return matchesSearch && matchesCity && matchesState;
-  });
+  const getUniqueStates = () => {
+    return [...new Set(schools.map(school => school.state))].sort();
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading schools...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-600 mb-4">{error}</p>
-          <button 
-            onClick={fetchSchools}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            Try Again
-          </button>
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600 dark:text-gray-300">Loading schools...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Our Schools</h1>
-          <p className="text-gray-600 mb-6">Discover amazing schools in our network</p>
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center space-x-4">
+            <Link 
+              href="/"
+              className="inline-flex items-center text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Home
+            </Link>
+          </div>
           <Link 
-            href="/addSchool" 
-            className="inline-block px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            href="/addSchool"
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             Add New School
           </Link>
         </div>
 
-        {/* Search and Filters */}
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {/* Search */}
-            <div className="md:col-span-2">
-              <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-2">
-                Search Schools
-              </label>
-              <input
-                type="text"
-                id="search"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search by name or address..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
+        {/* Title */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            All Schools
+          </h1>
+          <p className="text-gray-600 dark:text-gray-300">
+            Browse and search through all registered schools
+          </p>
+        </div>
 
-            {/* City Filter */}
-            <div>
-              <label htmlFor="cityFilter" className="block text-sm font-medium text-gray-700 mb-2">
-                Filter by City
-              </label>
+        {/* Filters */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="text-gray-900 dark:text-white">Search & Filters</CardTitle>
+            <CardDescription className="text-gray-600 dark:text-gray-400">
+              Find schools by name, location, or other criteria
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {/* Search */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Input
+                  placeholder="Search schools..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                />
+              </div>
+
+              {/* City Filter */}
               <select
-                id="cityFilter"
-                value={filterCity}
-                onChange={(e) => setFilterCity(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                value={selectedCity}
+                onChange={(e) => setSelectedCity(e.target.value)}
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
               >
                 <option value="">All Cities</option>
-                {cities.map(city => (
+                {getUniqueCities().map(city => (
                   <option key={city} value={city}>{city}</option>
                 ))}
               </select>
-            </div>
 
-            {/* State Filter */}
-            <div>
-              <label htmlFor="stateFilter" className="block text-sm font-medium text-gray-700 mb-2">
-                Filter by State
-              </label>
+              {/* State Filter */}
               <select
-                id="stateFilter"
-                value={filterState}
-                onChange={(e) => setFilterState(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                value={selectedState}
+                onChange={(e) => setSelectedState(e.target.value)}
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
               >
                 <option value="">All States</option>
-                {states.map(state => (
+                {getUniqueStates().map(state => (
                   <option key={state} value={state}>{state}</option>
                 ))}
               </select>
+
+              {/* Clear Filters */}
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSearchTerm('');
+                  setSelectedCity('');
+                  setSelectedState('');
+                }}
+                className="dark:border-gray-600 dark:text-white dark:hover:bg-gray-800"
+              >
+                Clear Filters
+              </Button>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* Results Count */}
         <div className="mb-6">
-          <p className="text-gray-600">
+          <p className="text-gray-600 dark:text-gray-300">
             Showing {filteredSchools.length} of {schools.length} schools
           </p>
         </div>
 
         {/* Schools Grid */}
         {filteredSchools.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-500 text-lg">No schools found matching your criteria.</p>
-            <button 
-              onClick={() => {
-                setSearchTerm('');
-                setFilterCity('');
-                setFilterState('');
-              }}
-              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              Clear Filters
-            </button>
-          </div>
+          <Card className="text-center py-12">
+            <CardContent>
+              <div className="text-gray-500 dark:text-gray-400">
+                <Search className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                <h3 className="text-lg font-medium mb-2">No schools found</h3>
+                <p>Try adjusting your search criteria or filters.</p>
+              </div>
+            </CardContent>
+          </Card>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredSchools.map((school) => (
-              <div key={school.id} className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
-                {/* School Image */}
-                <div className="relative h-48 bg-gray-200">
+              <Card key={school.id} className="overflow-hidden hover:shadow-lg transition-shadow dark:bg-gray-800 dark:border-gray-700">
+                <div className="relative h-48 bg-gray-200 dark:bg-gray-700">
                   {school.image ? (
                     <Image
                       src={school.image}
                       alt={school.name}
                       fill
                       className="object-cover"
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     />
                   ) : (
-                    <div className="flex items-center justify-center h-full">
-                      <svg className="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                      </svg>
+                    <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
+                      <div className="text-center">
+                        <div className="w-16 h-16 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center mx-auto mb-2">
+                          <span className="text-2xl font-bold text-gray-600 dark:text-gray-400">
+                            {school.name.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        <p className="text-sm">No Image</p>
+                      </div>
                     </div>
                   )}
                 </div>
-
-                {/* School Info */}
-                <div className="p-4">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg text-gray-900 dark:text-white line-clamp-2">
                     {school.name}
-                  </h3>
-                  
-                  <div className="space-y-2 text-sm text-gray-600">
-                    <div className="flex items-start">
-                      <svg className="w-4 h-4 text-gray-400 mt-0.5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                      <p className="line-clamp-2">{school.address}</p>
-                    </div>
-                    
-                    <div className="flex items-center">
-                      <svg className="w-4 h-4 text-gray-400 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                      </svg>
-                      <p>{school.city}, {school.state}</p>
-                    </div>
+                  </CardTitle>
+                  <CardDescription className="text-gray-600 dark:text-gray-400 line-clamp-2">
+                    {school.address}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                    <MapPin className="w-4 h-4 mr-2 flex-shrink-0" />
+                    <span>{school.city}, {school.state}</span>
                   </div>
-
-                  {/* Contact Info */}
-                  <div className="mt-4 pt-4 border-t border-gray-200">
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center text-gray-600">
-                        <svg className="w-4 h-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                        </svg>
-                        <span>{school.contact}</span>
-                      </div>
-                      <div className="flex items-center text-gray-600">
-                        <svg className="w-4 h-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                        </svg>
-                        <span className="truncate max-w-[120px]">{school.email_id}</span>
-                      </div>
-                    </div>
+                  <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                    <Phone className="w-4 h-4 mr-2 flex-shrink-0" />
+                    <span>{school.contact}</span>
                   </div>
-                </div>
-              </div>
+                  <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                    <Mail className="w-4 h-4 mr-2 flex-shrink-0" />
+                    <span className="truncate">{school.email_id}</span>
+                  </div>
+                  <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                    <Calendar className="w-4 h-4 mr-2 flex-shrink-0" />
+                    <span>Added {formatDate(school.created_at)}</span>
+                  </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         )}
